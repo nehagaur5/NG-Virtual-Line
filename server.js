@@ -19,11 +19,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 function normalizeMongoUri(input) {
   let uri = (input || '').trim();
-  if (!uri) return 'mongodb://127.0.0.1:27017/mg_virtual_line';
+  if (!uri) return 'mongodb://127.0.0.1:27017/NG_virtual_line';
   const hasDb = /mongodb(?:\+srv)?:\/\/[^\s\/]+\/[A-Za-z0-9_.-]+/.test(uri);
   if (!hasDb) {
     const parts = uri.split('?');
-    const base = parts[0].replace(/\/?$/, '/mg_virtual_line');
+    const base = parts[0].replace(/\/?$/, '/NG_virtual_line');
     uri = parts.length > 1 ? `${base}?${parts.slice(1).join('?')}` : base;
   }
   return uri;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>MG Virtual Line - Admin</title>
+  <title>NG Virtual Line - Admin</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/socket.io/socket.io.js"></script>
   <link rel="icon" href="data:," />
@@ -29,7 +29,7 @@
   <div class="max-w-3xl mx-auto p-4 space-y-4">
     <header class="flex items-center justify-between py-4">
       <div>
-        <h1 class="text-xl font-bold">MG Virtual Line</h1>
+        <h1 class="text-xl font-bold">NG Virtual Line</h1>
         <p class="text-xs text-slate-500">Admin</p>
       </div>
       <div class="flex items-center gap-3">
@@ -84,7 +84,7 @@
         <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <div class="text-sm text-slate-400 mb-1">Public QR</div>
-            <img id="qrImg" class="border border-slate-700 rounded max-h-48 bg-slate-900" />
+            <iNG id="qrING" class="border border-slate-700 rounded max-h-48 bg-slate-900" />
           </div>
           <div>
             <div class="text-sm text-slate-400 mb-1">Token List</div>
@@ -194,7 +194,7 @@
           
           joinVendorRoom(code);
           refreshTokenList(code);
-          (async () => { try { const q = await apiJson(`/vendor/qr?vendorCode=${encodeURIComponent(code)}`); $('qrImg').src = q.qrDataUrl; } catch(_){} })();
+          (async () => { try { const q = await apiJson(`/vendor/qr?vendorCode=${encodeURIComponent(code)}`); $('qrING').src = q.qrDataUrl; } catch(_){} })();
         });
       } catch(_) {}
       // Check localStorage first to maintain user's last selection
@@ -211,7 +211,7 @@
           refreshTokenList(savedVendor);
           try {
             const q = await apiJson(`/vendor/qr?vendorCode=${encodeURIComponent(savedVendor)}`);
-            $('qrImg').src = q.qrDataUrl;
+            $('qrING').src = q.qrDataUrl;
           } catch(_){}
           return;
         }
@@ -230,7 +230,7 @@
           localStorage.setItem('admin_vendor_code', vm.vendor.vendorCode);
           try {
             const q = await apiJson(`/vendor/qr?vendorCode=${encodeURIComponent(vm.vendor.vendorCode)}`);
-            $('qrImg').src = q.qrDataUrl;
+            $('qrING').src = q.qrDataUrl;
           } catch(_){}
           return;
         }
@@ -258,7 +258,7 @@
         if (data.error) return alert(data.error);
         $('vendorInfo').classList.remove('hidden');
         $('vendorCodeLabel').textContent = data.vendor.vendorCode;
-        $('qrImg').src = data.qrDataUrl;
+        $('qrING').src = data.qrDataUrl;
         joinVendorRoom(data.vendor.vendorCode);
         refreshTokenList(data.vendor.vendorCode);
         // Persist selection for refresh
@@ -302,7 +302,7 @@
       $('vendorInfo').classList.remove('hidden');
       $('vendorCodeLabel').textContent = data.vendor.vendorCode;
       $('adminVendorName').value = data.vendor.name || '';
-      $('qrImg').src = data.qrDataUrl;
+      $('qrING').src = data.qrDataUrl;
       joinVendorRoom(data.vendor.vendorCode);
       refreshTokenList(data.vendor.vendorCode);
       localStorage.setItem('admin_vendor_code', data.vendor.vendorCode);

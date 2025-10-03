@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>MG Virtual Line - User</title>
+  <title>NG Virtual Line - User</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
@@ -29,7 +29,7 @@
   <div class="max-w-5xl mx-auto p-4 space-y-4">
     <header class="flex items-center justify-between py-4">
       <div>
-        <h1 class="text-xl font-bold">MG Virtual Line</h1>
+        <h1 class="text-xl font-bold">NG Virtual Line</h1>
         <p class="text-xs text-slate-400">User</p>
       </div>
       <div class="flex items-center gap-3">
@@ -519,8 +519,8 @@
           if (video.readyState === video.HAVE_ENOUGH_DATA) {
             canvas.width = video.videoWidth; canvas.height = video.videoHeight;
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const result = jsQR(img.data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
+            const iNG = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const result = jsQR(iNG.data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
             if (result && result.data) {
               const vendor = parseVendorFromString(result.data);
               if (vendor) { $('vendorInput').value = vendor; stopQrScan(); return; }
