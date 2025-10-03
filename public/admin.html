@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>MG Virtual Line - Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <link rel="icon" href="data:," />
+  <style>
+    .card{box-shadow:0 2px 12px rgba(0,0,0,.08)}
+    /* Mobile optimizations */
+    @media (max-width: 768px) {
+      .max-w-3xl { max-width: 100%; }
+      .p-4 { padding: 1rem; }
+      .gap-3 { gap: 0.75rem; }
+      .text-xl { font-size: 1.125rem; }
+      .text-2xl { font-size: 1.5rem; }
+      .py-2 { padding-top: 0.375rem; padding-bottom: 0.375rem; }
+      .px-4 { padding-left: 0.75rem; padding-right: 0.75rem; }
+      .h-64 { height: 12rem; }
+      .max-h-48 { max-height: 8rem; }
+    }
+    /* Prevent zoom on input focus */
+    input, select, textarea { font-size: 16px; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100">
+  <div class="max-w-3xl mx-auto p-4 space-y-4">
+    <header class="flex items-center justify-between py-4">
+      <div>
+        <h1 class="text-xl font-bold">MG Virtual Line</h1>
+        <p class="text-xs text-slate-500">Admin</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="/history.html" class="text-sm text-slate-500 hover:text-slate-300">History</a>
+        <!-- Profile icon -->
+        <div class="relative">
+          <button id="profileBtn" class="w-8 h-8 rounded-full bg-emerald-600 hover:bg-emerald-500 flex items-center justify-center text-white text-sm font-medium">
+            <span id="profileInitial">A</span>
+          </button>
+          <!-- Profile dropdown -->
+          <div id="profileDropdown" class="absolute right-0 top-full mt-2 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-lg hidden z-50">
+            <div class="p-3 border-b border-slate-700">
+              <div class="text-sm font-medium" id="profileEmail"></div>
+              <div class="text-xs text-slate-400">Admin Account</div>
+            </div>
+            <div class="p-2">
+              <button id="editProfileBtn" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded">Edit Profile</button>
+              <button id="logoutBtn" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 rounded">Logout</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="card bg-slate-800 border border-slate-700 rounded-lg p-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
+        <div>
+          <input id="adminVendorName" class="w-full border border-slate-700 bg-slate-900 rounded px-3 py-2" placeholder="Shop/Office Name" />
+          <div id="nameWarn" class="text-xs text-rose-400 mt-1 hidden">Name already exists. Choose a unique name.</div>
+        </div>
+        <div class="flex flex-wrap gap-2 items-center">
+          <button id="createVendorBtn" class="py-2 px-4 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-sm">Create New Vendor</button>
+          <select id="vendorSwitch" class="border border-slate-700 bg-slate-900 rounded px-4 py-2 text-sm w-full md:w-auto"></select>
+        </div>
+      </div>
+      <div id="vendorInfo" class="mt-3 hidden">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-sm text-slate-400">Vendor Code</div>
+            <div id="vendorCodeLabel" class="text-xl font-bold">-</div>
+          </div>
+          <div class="flex gap-2">
+            <button id="nextBtn" class="py-2 px-4 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Next Token</button>
+            <button id="clearBtn" class="py-2 px-4 rounded bg-amber-600 hover:bg-amber-500 text-white">Clear Queue</button>
+          </div>
+        </div>
+        <div class="mt-3 grid grid-cols-3 gap-3 text-center">
+          <div class="p-3 rounded bg-slate-800 border border-slate-700"><div class="text-xs text-slate-400">Serving</div><div id="adminServing" class="text-2xl font-bold">-</div></div>
+          <div class="p-3 rounded bg-slate-800 border border-slate-700"><div class="text-xs text-slate-400">Last Issued</div><div id="adminLastIssued" class="text-2xl font-bold">-</div></div>
+          <div class="p-3 rounded bg-slate-800 border border-slate-700"><div class="text-xs text-slate-400">Next Waiting</div><div id="adminNextWaiting" class="text-2xl font-bold">-</div></div>
+        </div>
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <div class="text-sm text-slate-400 mb-1">Public QR</div>
+            <img id="qrImg" class="border border-slate-700 rounded max-h-48 bg-slate-900" />
+          </div>
+          <div>
+            <div class="text-sm text-slate-400 mb-1">Token List</div>
+            <div id="tokenList" class="border border-slate-700 rounded p-2 h-64 overflow-auto text-sm bg-slate-900"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Profile Edit Modal -->
+  <div id="profileModal" class="fixed inset-0 bg-slate-900/80 hidden items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-lg w-full max-w-sm p-4 space-y-3 text-slate-100">
+      <div class="flex items-center justify-between">
+        <h3 class="font-semibold">Edit Profile</h3>
+        <button id="profileCloseBtn" class="text-slate-400 hover:text-slate-200">Close</button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1">Name</label>
+          <input id="profileName" class="w-full border border-slate-700 bg-slate-900 rounded px-3 py-2" placeholder="Your name" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1">Email</label>
+          <input id="profileEmailInput" type="email" class="w-full border border-slate-700 bg-slate-900 rounded px-3 py-2" placeholder="your@email.com" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1">Phone (Optional)</label>
+          <input id="profilePhone" class="w-full border border-slate-700 bg-slate-900 rounded px-3 py-2" placeholder="+1234567890" />
+        </div>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button id="saveProfileBtn" class="flex-1 py-2 rounded bg-emerald-600 hover:bg-emerald-500 text-white">Save</button>
+        <button id="cancelProfileBtn" class="flex-1 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-4 right-4 hidden max-w-xs bg-slate-800 border border-slate-700 text-slate-100 text-sm rounded px-3 py-2 shadow"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const socket = io();
+    let joinedVendor = null;
+    let currentUser = null;
+
+    async function apiJson(url, options = {}) {
+      const res = await fetch(url, options);
+      const text = await res.text();
+      try { const data = JSON.parse(text); if (!res.ok) throw new Error(data.error || res.statusText); return data; } catch (e) { throw new Error(text); }
+    }
+
+    function toast(message) {
+      const el = document.getElementById('toast');
+      el.textContent = message;
+      el.classList.remove('hidden');
+      clearTimeout(el.__t);
+      el.__t = setTimeout(() => el.classList.add('hidden'), 4000);
+    }
+
+    (async () => {
+      const me = await apiJson('/auth/me');
+      if (!me.user || me.user.role !== 'admin') { location.href = '/'; return; }
+      
+      currentUser = me.user;
+      
+      // Update profile display
+      $('profileEmail').textContent = me.user.email || '';
+      $('profileInitial').textContent = (me.user.name || me.user.email || 'A').charAt(0).toUpperCase();
+      // Load vendor list for switcher
+      try {
+        const lm = await apiJson('/vendor/listMine');
+        const sel = $('vendorSwitch');
+        sel.innerHTML = '<option value="">Switch Vendor…</option>' + (lm.vendors||[]).map(v => `<option value="${v.vendorCode}">${v.name} (${v.vendorCode})</option>`).join('');
+        window.__vendorNames = new Set((lm.vendors||[]).map(v => (v.name||'').trim().toLowerCase()));
+        window.__vendorList = lm.vendors || []; // Store vendor list globally
+        async function checkNameUnique(){
+          const nRaw = ($('adminVendorName').value||'').trim();
+          const n = nRaw.toLowerCase();
+          let exists = n && window.__vendorNames && window.__vendorNames.has(n);
+          if (!exists && n) {
+            try {
+              const r = await apiJson(`/vendor/checkName?name=${encodeURIComponent(nRaw)}`);
+              exists = !r.available;
+            } catch(_) {}
+          }
+          $('createVendorBtn').disabled = !!exists;
+          $('createVendorBtn').style.opacity = exists ? '0.6' : '1';
+          $('createVendorBtn').style.cursor = exists ? 'not-allowed' : 'pointer';
+          const warn = $('nameWarn'); if (exists) warn.classList.remove('hidden'); else warn.classList.add('hidden');
+        }
+        $('adminVendorName').addEventListener('input', checkNameUnique);
+        checkNameUnique();
+        sel.addEventListener('change', () => {
+          const code = sel.value;
+          if (!code) return;
+          localStorage.setItem('admin_vendor_code', code);
+          $('vendorInfo').classList.remove('hidden');
+          $('vendorCodeLabel').textContent = code;
+          
+          // Update vendor name in the input field
+          const selectedVendor = lm.vendors.find(v => v.vendorCode === code);
+          if (selectedVendor) {
+            $('adminVendorName').value = selectedVendor.name;
+          }
+          
+          joinVendorRoom(code);
+          refreshTokenList(code);
+          (async () => { try { const q = await apiJson(`/vendor/qr?vendorCode=${encodeURIComponent(code)}`); $('qrImg').src = q.qrDataUrl; } catch(_){} })();
+        });
+      } catch(_) {}
+      // Check localStorage first to maintain user's last selection
+      const savedVendor = localStorage.getItem('admin_vendor_code');
+      if (savedVendor) {
+        // Find the saved vendor in the list
+        const savedVendorData = window.__vendorList.find(v => v.vendorCode === savedVendor);
+        if (savedVendorData) {
+          $('vendorInfo').classList.remove('hidden');
+          $('vendorCodeLabel').textContent = savedVendor;
+          $('adminVendorName').value = savedVendorData.name;
+          $('vendorSwitch').value = savedVendor;
+          joinVendorRoom(savedVendor);
+          refreshTokenList(savedVendor);
+          try {
+            const q = await apiJson(`/vendor/qr?vendorCode=${encodeURIComponent(savedVendor)}`);
+            $('qrImg').src = q.qrDataUrl;
+          } catch(_){}
+          return;
+        }
+      }
+      
+      // Fallback to server-saved vendor if no localStorage
+      try {
+        const vm = await apiJson('/vendor/mine');
+        if (vm.vendor) {
+          $('vendorInfo').classList.remove('hidden');
+          $('vendorCodeLabel').textContent = vm.vendor.vendorCode;
+          $('adminVendorName').value = vm.vendor.name || '';
+          $('vendorSwitch').value = vm.vendor.vendorCode;
+          joinVendorRoom(vm.vendor.vendorCode);
+          refreshTokenList(vm.vendor.vendorCode);
+          localStorage.setItem('admin_vendor_code', vm.vendor.vendorCode);
+          try {
+            const q = await apiJson(`/vendor/qr?vendorCode=${encodeURIComponent(vm.vendor.vendorCode)}`);
+            $('qrImg').src = q.qrDataUrl;
+          } catch(_){}
+          return;
+        }
+      } catch (_) {}
+      
+      // Start auto-refresh for token list
+      setInterval(() => {
+        if (joinedVendor) {
+          refreshTokenList(joinedVendor);
+        }
+      }, 3000); // Auto-refresh every 3 seconds
+    })();
+
+    function joinVendorRoom(vendorCode) {
+      if (!vendorCode || vendorCode === joinedVendor) return;
+      joinedVendor = vendorCode;
+      socket.emit('join_vendor', vendorCode);
+    }
+
+    $('createVendorBtn').addEventListener('click', async () => {
+        const nameInput = $('adminVendorName').value.trim();
+        const name = nameInput || prompt('New Vendor Name?') || 'My Shop';
+        const res = await fetch('/vendor/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+        const data = await res.json();
+        if (data.error) return alert(data.error);
+        $('vendorInfo').classList.remove('hidden');
+        $('vendorCodeLabel').textContent = data.vendor.vendorCode;
+        $('qrImg').src = data.qrDataUrl;
+        joinVendorRoom(data.vendor.vendorCode);
+        refreshTokenList(data.vendor.vendorCode);
+        // Persist selection for refresh
+        localStorage.setItem('admin_vendor_code', data.vendor.vendorCode);
+        // Update switcher
+        try {
+          const lm = await apiJson('/vendor/listMine');
+          $('vendorSwitch').innerHTML = '<option value="">Switch Vendor…</option>' + (lm.vendors||[]).map(v => `<option value="${v.vendorCode}">${v.name} (${v.vendorCode})</option>`).join('');
+          window.__vendorNames = new Set((lm.vendors||[]).map(v => (v.name||'').trim().toLowerCase()));
+        } catch(_){}
+    });
+
+    $('nextBtn').addEventListener('click', async () => {
+      const vendorCode = $('vendorCodeLabel').textContent.trim();
+      if (!vendorCode) return;
+      const res = await fetch('/token/next', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vendorCode }) });
+      const data = await res.json();
+      if (data.error) return alert(data.error);
+      const msg = `Token ${data.served ?? ''} created. ${data.vendor?.currentServing ? `Now serving ${data.vendor.currentServing}.` : ''}`.trim();
+      if (msg) console.log(msg);
+      refreshTokenList(vendorCode);
+    });
+
+    $('clearBtn').addEventListener('click', async () => {
+      const vendorCode = $('vendorCodeLabel').textContent.trim();
+      if (!vendorCode) return;
+      if (!confirm('Clear Queue: delete all tokens and reset counters?')) return;
+      const res = await fetch('/vendor/clear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vendorCode }) });
+      const data = await res.json();
+      if (data.error) return alert(data.error);
+      refreshTokenList(vendorCode);
+    });
+
+    $('newShopBtn').addEventListener('click', async () => {
+      // Create a fresh shop. Old history remains in DB and is not editable
+      const nameInput = $('adminVendorName').value.trim();
+      const name = nameInput || prompt('New Shop Name? (leave blank to use previous)') || (nameInput || 'My Shop');
+      const res = await fetch('/vendor/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+      const data = await res.json();
+      if (data.error) return alert(data.error);
+      $('vendorInfo').classList.remove('hidden');
+      $('vendorCodeLabel').textContent = data.vendor.vendorCode;
+      $('adminVendorName').value = data.vendor.name || '';
+      $('qrImg').src = data.qrDataUrl;
+      joinVendorRoom(data.vendor.vendorCode);
+      refreshTokenList(data.vendor.vendorCode);
+      localStorage.setItem('admin_vendor_code', data.vendor.vendorCode);
+    });
+
+
+
+
+    async function refreshTokenList(vendorCode) {
+      const [tokensRes, histRes] = await Promise.all([
+        fetch(`/token/list?vendorCode=${encodeURIComponent(vendorCode)}`),
+        fetch(`/history/list?vendorCode=${encodeURIComponent(vendorCode)}`)
+      ]);
+      const data = await tokensRes.json();
+      if (data.error) return;
+      const histData = await histRes.json();
+      const historyByTokenId = new Map((histData.records || []).map(r => [String(r.tokenId), r]));
+      const labelFromHistory = (rec, token) => {
+        if (rec && rec.status) return rec.status; // Created/Completed
+        return token.status === 'waiting' ? 'Pending' : (token.status === 'served' ? 'Created' : token.status);
+      };
+      const rows = (data.tokens || []).map(t => {
+        const rec = historyByTokenId.get(String(t._id));
+        const statusLabel = labelFromHistory(rec, t);
+        const badge = statusLabel === 'Created' ? 'bg-amber-600' : (statusLabel === 'Pending' ? 'bg-slate-600' : 'bg-emerald-600');
+        const canAdminConfirm = rec && rec.status !== 'Completed' && !rec.adminConfirmed;
+        const actions = canAdminConfirm ? `<button class=\"text-xs px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white admin-confirm\" data-id=\"${rec.tokenId}\">Confirm</button>` : '';
+        return `<tr class=\"border-b border-slate-800\"><td class=\"py-1 pr-3\">#${t.number}</td><td class=\"py-1 pr-3\"><span class=\"px-2 py-1 rounded text-xs ${badge}\">${statusLabel}</span></td><td class=\"py-1 pr-3\">${actions}</td></tr>${t.note?`<tr class=\"border-b border-slate-800 text-xs text-slate-500\"><td colspan=\"3\">Note: ${t.note}</td></tr>`:''}`;
+      }).join('');
+      $('tokenList').innerHTML = rows ? `<table class=\"w-full text-sm\"><thead><tr class=\"text-left text-slate-400 border-b border-slate-700\"><th class=\"py-1 pr-3\">Token</th><th class=\"py-1 pr-3\">Status</th><th class=\"py-1 pr-3\">Actions</th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="text-slate-400">No tokens yet</div>';
+      // wire admin confirm buttons (exactly like history)
+      $('tokenList').querySelectorAll('button.admin-confirm').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const tokenId = btn.getAttribute('data-id');
+          try {
+            await fetch('/history/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokenId }) });
+            await refreshTokenList(vendorCode);
+          } catch (e) { alert('Confirm failed'); }
+        });
+      });
+      $('adminServing').textContent = data.vendor?.currentServing ?? '-';
+      $('adminLastIssued').textContent = data.vendor?.lastIssued ?? '-';
+    }
+
+    socket.on('vendor_update', (payload) => {
+      if (!joinedVendor || payload.vendorCode !== joinedVendor) return;
+      $('adminServing').textContent = payload.currentServing || '-';
+      $('adminLastIssued').textContent = payload.lastIssued || '-';
+      $('adminNextWaiting').textContent = payload.nextWaiting ?? '-';
+      refreshTokenList(joinedVendor);
+    });
+
+    // Profile event handlers
+    $('profileBtn').addEventListener('click', () => {
+      const dropdown = $('profileDropdown');
+      dropdown.classList.toggle('hidden');
+    });
+
+    $('editProfileBtn').addEventListener('click', () => {
+      // Populate profile modal with current data
+      $('profileName').value = currentUser.name || '';
+      $('profileEmailInput').value = currentUser.email || '';
+      $('profilePhone').value = currentUser.phone || '';
+      
+      // Show modal
+      $('profileModal').classList.remove('hidden');
+      $('profileModal').classList.add('flex');
+      
+      // Close dropdown
+      $('profileDropdown').classList.add('hidden');
+    });
+
+    $('saveProfileBtn').addEventListener('click', async () => {
+      const name = $('profileName').value.trim();
+      const email = $('profileEmailInput').value.trim();
+      const phone = $('profilePhone').value.trim();
+      
+      if (!email) {
+        toast('Email is required');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/auth/updateProfile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, phone })
+        });
+        
+        if (response.ok) {
+          // Update local user data
+          currentUser.name = name;
+          currentUser.email = email;
+          currentUser.phone = phone;
+          
+          // Update display
+          $('profileEmail').textContent = email;
+          $('profileInitial').textContent = (name || email).charAt(0).toUpperCase();
+          
+          // Close modal
+          $('profileModal').classList.add('hidden');
+          $('profileModal').classList.remove('flex');
+          
+          toast('Profile updated successfully');
+        } else {
+          const data = await response.json();
+          toast(data.error || 'Failed to update profile');
+        }
+      } catch (e) {
+        toast('Failed to update profile');
+      }
+    });
+
+    $('cancelProfileBtn').addEventListener('click', () => {
+      $('profileModal').classList.add('hidden');
+      $('profileModal').classList.remove('flex');
+    });
+
+    $('profileCloseBtn').addEventListener('click', () => {
+      $('profileModal').classList.add('hidden');
+      $('profileModal').classList.remove('flex');
+    });
+
+    $('logoutBtn').addEventListener('click', async () => { 
+      localStorage.removeItem('admin_vendor_code');
+      await fetch('/auth/logout', { method: 'POST' }); 
+      location.href = '/'; 
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#profileBtn') && !e.target.closest('#profileDropdown')) {
+        $('profileDropdown').classList.add('hidden');
+      }
+    });
+
+  </script>
+</body>
+</html>
+
+
